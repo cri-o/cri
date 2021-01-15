@@ -18,11 +18,15 @@ pub struct DefaultKeyValueStorage {
 
 impl KeyValueStorage for DefaultKeyValueStorage {
     /// Open the database, whereas the `Path` has to be a directory.
-    fn open(path: &Path) -> Result<Self> {
-        trace!("Opening storage {}", path.display());
+    fn open<P>(path: P) -> Result<Self>
+    where
+        P: AsRef<Path>,
+    {
+        trace!("Opening storage {}", path.as_ref().display());
         Ok(Self {
-            db: sled::open(path)
-                .with_context(|| format!("failed to open storage path {}", path.display()))?,
+            db: sled::open(&path).with_context(|| {
+                format!("failed to open storage path {}", path.as_ref().display())
+            })?,
         })
     }
 
@@ -98,7 +102,7 @@ mod tests {
     #[test]
     fn get_nonexisting_value() -> Result<()> {
         let dir = TempDir::new()?;
-        let mut db = DefaultKeyValueStorage::open(dir.path())?;
+        let db = DefaultKeyValueStorage::open(dir.path())?;
 
         assert!(db.get::<_, String>("key")?.is_none());
         Ok(())
@@ -159,7 +163,7 @@ mod tests {
         let dir = TempDir::new()?;
 
         let mut db1 = DefaultKeyValueStorage::open(dir.path())?;
-        let mut db2 = db1.clone();
+        let db2 = db1.clone();
 
         let (k, v) = ("key", "value");
 
